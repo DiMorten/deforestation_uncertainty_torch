@@ -19,51 +19,31 @@ import cv2
 from enum import Enum
 import matplotlib.pyplot as plt
 from scipy import optimize  
-from src.trainer.base import Trainer
+from src.manager.base import Manager
 import src.loss
 import src.uncertainty as uncertainty
 import pathlib
 import pdb
-class TrainerMultiOutput(Trainer):
+
+
+import torch
+from numpy.core.numeric import Inf
+import torch.nn as nn
+from tqdm import tqdm
+
+from src.trainer import Trainer
+class ManagerMultiOutput(Manager):
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0):
         super().__init__(config, dataset, patchesHandler, logger, grid_idx=grid_idx)
         self.network_architecture = utils_v1.build_resunet_dropout_spatial
         self.pred_entropy_single_idx = 0
         
+
     def train(self):
-
-        metrics_all = []
-            
-        print('time: ', self.repetition_id)
-
-        rows = self.patch_size
-        cols = self.patch_size
-        adam = Adam(lr = self.config['learning_rate'] , beta_1=0.9) # 1e-3
-        
-        loss = src.loss.weighted_categorical_crossentropy(self.weights)
-        
-        input_shape = (rows, cols, self.channels)
-        self.model = self.network_architecture(input_shape, self.nb_filters, self.class_n)
-        
-        self.model.compile(optimizer=adam, loss=loss, metrics=['accuracy'])
-        self.model.summary()
-
-        earlystop = EarlyStopping(monitor='val_loss', min_delta=0.0001, patience=10, verbose=1, mode='min')
-        checkpoint = ModelCheckpoint(self.path_models+ '/' + self.method +'_'+str(self.repetition_id)+'.h5', monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-        lr_reduce = ReduceLROnPlateau(factor=0.9, min_delta=0.0001, patience=5, verbose=1)
-        callbacks_list = [earlystop, checkpoint]
-        # train the model
-        start_training = time.time()
-        self.history = self.model.fit_generator(self.train_gen_batch,
-                                steps_per_epoch=self.len_X_train*3//self.train_gen.batch_size,
-                                validation_data=self.valid_gen_batch,
-                                validation_steps=self.len_X_valid*3//self.valid_gen.batch_size,
-                                epochs=100,
-                                callbacks=callbacks_list)
-        end_training = time.time() - start_training
-
-        del self.train_gen_batch, self.valid_gen_batch
-
+        trainer = Trainer(self.config)
+        t0 = time.time()
+        trainer.train(self.train_dataloader, self.val_dataloader)
+        print(time.time() - t0)
     def getMeanProb(self):
         self.mean_prob = np.mean(self.prob_rec, axis = -1)
         if self.classes_mode == True:
@@ -113,20 +93,20 @@ class TrainerMultiOutput(Trainer):
                 self.snippet_poi_results.append(dict_)
 
         return self.snippet_poi_results
-class TrainerMCDropout(TrainerMultiOutput):
+class ManagerMCDropout(ManagerMultiOutput):
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0):
         config['dropout_training'] = True
         super().__init__(config, dataset, patchesHandler, logger, grid_idx)
         self.default_log_name = 'output/log/log_mcd.pkl'
 
-class TrainerSingleRun(TrainerMultiOutput):
+class ManagerSingleRun(ManagerMultiOutput):
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0):
         config['dropout_training'] = False
         super().__init__(config, dataset, patchesHandler, logger, grid_idx)
         self.default_log_name = 'output/log/log_single_run.pkl'
 
-# class TrainerEnsemble(TrainerMCDropout):
-class TrainerEnsemble(TrainerMultiOutput):
+# class ManagerEnsemble(ManagerMCDropout):
+class ManagerEnsemble(ManagerMultiOutput):
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0):
         config['dropout_training'] = False
         super().__init__(config, dataset, patchesHandler, logger, grid_idx)

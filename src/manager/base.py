@@ -20,7 +20,11 @@ from enum import Enum
 import matplotlib.pyplot as plt
 from scipy import optimize  
 import glob
-class Trainer():
+
+from dataset_torch import RasterDataset
+from torch.utils.data import DataLoader
+        
+class Manager():
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0, training_times=1):
         self.classes_mode = config['classes_mode']
         self.config = config
@@ -127,6 +131,32 @@ class Trainer():
 
 
     def getGenerators(self):
+        
+
+                
+        ## train set
+        # =============================================================================
+        dataset_config = self.config   
+        dataset_config['split'] = 'train'
+
+        train_data = RasterDataset(self.image_stack, self.label_mask,
+                                   self.coords_train, dataset_config)
+        self.train_dataloader = DataLoader(train_data, 
+                            batch_size=self.config['Train']['batch_size'], 
+                            shuffle=True, drop_last=True)
+
+        ## validation set
+        # =============================================================================
+        dataset_config = self.config       
+        dataset_config['split'] = 'val'
+
+        val_data = RasterDataset(self.image_stack, self.label_mask,
+                                 self.coords_val, dataset_config)
+        self.val_dataloader = DataLoader(val_data, 
+                                         batch_size=self.config['Train']['batch_size'], 
+                                         shuffle=True)
+        # =============================================================================
+
         train_datagen = ImageDataGenerator()
         valid_datagen = ImageDataGenerator()
         # pdb.set_trace()
@@ -230,7 +260,7 @@ class Trainer():
         # end optional
 
         # self.getUncertaintyAAValues()
-        # trainer.getUncertaintyAAAuditedValues()
+        # manager.getUncertaintyAAAuditedValues()
         self.getOptimalUncertaintyThreshold()
         result = self.getUncertaintyMetricsFromOptimalThreshold()
         out['uncertainty_result'] = result

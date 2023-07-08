@@ -19,7 +19,7 @@ import cv2
 from enum import Enum
 import matplotlib.pyplot as plt
 from scipy import optimize  
-from src.trainer.base import Trainer
+from src.trainer.base import Manager
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
@@ -106,7 +106,7 @@ def relu6_evidence(logits):
 def softsign_evidence(logits):
     return tf.nn.softsign(logits)
 
-class TrainerEvidential(Trainer):
+class ManagerEvidential(Manager):
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0, training_times=1):
         config['classes_mode'] = False
         super().__init__(config, dataset, patchesHandler, logger, grid_idx=grid_idx)
@@ -669,7 +669,7 @@ class TrainerEvidential(Trainer):
                     "alpha": self.alpha_unpad[lims[0]:lims[1], lims[2]:lims[3]][coord[0], coord[1]]}
             )
         return self.snippet_poi_results
-class TrainerEvidentialUEO(TrainerEvidential):
+class ManagerEvidentialUEO(ManagerEvidential):
     def plotLossTerms(self):
         super().plotLossTerms()
         plt.figure(8)
