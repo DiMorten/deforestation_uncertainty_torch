@@ -13,11 +13,10 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 import torchvision.transforms.functional as TF
 
-from src.utils import get_total_paths
 import pdb
 import pandas as pd
 
-from src.Custom_augmentation import ToMask
+# from src.Custom_augmentation import ToMask
 
 
 class RasterDataset(Dataset):
@@ -34,7 +33,7 @@ class RasterDataset(Dataset):
 		assert (self.split in ['train', 'test', 'val']), "Invalid split!"
 
 
-		assert (len(self.paths_images) == len(self.paths_segmentations)), "Different number of instances between the input and the segmentation maps"
+		# assert (len(self.paths_images) == len(self.paths_segmentations)), "Different number of instances between the input and the segmentation maps"
 		# check for segmentation
 
 		# Get the transforms
@@ -60,7 +59,7 @@ class RasterDataset(Dataset):
 		"""
 			Function to get the number of images using the given list of images
 		"""
-		return len(self.paths_images)
+		return len(self.coords)
 
 	def __getitem__(self, idx):
 		"""

@@ -3,15 +3,10 @@ from src.Logger import Logger
 import utils_v1
 from icecream import ic
 import numpy as np
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import os
 from src.patchesHandler import PatchesHandler, PatchesHandlerMultipleDates, PatchesHandlerEvidential
 import time
-from tensorflow.keras.optimizers import Adam, SGD, RMSprop
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-import tensorflow as tf
-from tensorflow.keras.callbacks import Callback
-import tensorflow.keras.backend as K
+
 from sklearn import metrics
 from sklearn.metrics import f1_score
 from src import metrics as _metrics
@@ -21,7 +16,8 @@ import matplotlib.pyplot as plt
 from scipy import optimize  
 import glob
 
-from dataset_torch import RasterDataset
+
+from src.dataset_torch import RasterDataset
 from torch.utils.data import DataLoader
         
 class Manager():
@@ -156,7 +152,7 @@ class Manager():
                                          batch_size=self.config['Train']['batch_size'], 
                                          shuffle=True)
         # =============================================================================
-
+        '''
         train_datagen = ImageDataGenerator()
         valid_datagen = ImageDataGenerator()
         # pdb.set_trace()
@@ -181,7 +177,7 @@ class Manager():
                 self.image_stack, self.label_mask, self.patch_size, self.class_n)
         self.valid_gen_batch = self.patchesHandler.batch_generator(self.valid_gen,
                 self.image_stack, self.label_mask, self.patch_size, self.class_n)
-
+        '''
     def fixChannelNumber(self):
         if type(self.patchesHandler) == PatchesHandlerMultipleDates:
             self.channels = self.patchesHandler.input_image_shape  

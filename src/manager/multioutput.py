@@ -3,24 +3,16 @@ from src.Logger import Logger
 import utils_v1
 from icecream import ic
 import numpy as np
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import os
-from src.patchesHandler import PatchesHandler, PatchesHandlerMultipleDates, PatchesHandlerEvidential
 import time
-from tensorflow.keras.optimizers import Adam, SGD, RMSprop
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-import tensorflow as tf
-from tensorflow.keras.callbacks import Callback
-import tensorflow.keras.backend as K
+
 from sklearn import metrics
 from sklearn.metrics import f1_score
 from src import metrics as _metrics
-import cv2
 from enum import Enum
 import matplotlib.pyplot as plt
 from scipy import optimize  
 from src.manager.base import Manager
-import src.loss
 import src.uncertainty as uncertainty
 import pathlib
 import pdb
@@ -35,7 +27,7 @@ from src.trainer import Trainer
 class ManagerMultiOutput(Manager):
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0):
         super().__init__(config, dataset, patchesHandler, logger, grid_idx=grid_idx)
-        self.network_architecture = utils_v1.build_resunet_dropout_spatial
+        # self.network_architecture = utils_v1.build_resunet_dropout_spatial
         self.pred_entropy_single_idx = 0
         
 

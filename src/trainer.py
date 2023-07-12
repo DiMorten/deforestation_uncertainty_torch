@@ -2,7 +2,6 @@ import os
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
-import wandb
 import cv2
 import torch.nn as nn
 
@@ -10,7 +9,7 @@ from tqdm import tqdm
 from os import replace
 from numpy.core.numeric import Inf
 
-from src.utils import get_losses, get_optimizer, get_schedulers, create_dir
+from src.utils import create_dir
 
 import sys
 
@@ -60,7 +59,6 @@ class Trainer(object):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.type = self.config['General']['type']
 
         self.device = torch.device(self.config['General']['device'] if torch.cuda.is_available() else "cpu")
         print("device: %s" % self.device)
@@ -91,7 +89,7 @@ class Trainer(object):
         # summary(self.model, (3,resize,resize))
         # exit(0)
 
-        self.loss_depth, self.loss_segmentation = get_loss(config)
+        self.loss_segmentation = get_loss()
         self.optimizer = get_optimizer(config, self.model)
         self.optimizer = ReduceLROnPlateau(self.optimizer)
 
