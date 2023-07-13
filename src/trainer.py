@@ -41,6 +41,9 @@ def get_optimizer(config, net):
         optimizer = optim.SGD(net.parameters(), lr=config['General']['lr'], momentum=config['General']['momentum'])
     return optimizer
 
+def get_scheduler(optimizer):
+    return [ReduceLROnPlateau(optimizer)]
+
 class EarlyStopping():
     def __init__(self, patience):
         self.patience = patience
@@ -91,7 +94,7 @@ class Trainer(object):
 
         self.loss_segmentation = get_loss()
         self.optimizer = get_optimizer(config, self.model)
-        self.optimizer = ReduceLROnPlateau(self.optimizer)
+        self.schedulers = get_scheduler(self.optimizer)
 
         self.path_model = os.path.join(self.config['General']['path_model'], 
             self.model.__class__.__name__ + 
@@ -114,7 +117,7 @@ class Trainer(object):
                 X, Y_segmentations = X.to(self.device), Y_segmentations.to(self.device)
                 # zero the parameter gradients
 
-                self.optimizer_scratch.zero_grad()
+                self.optimizer.zero_grad()
                 # forward + backward + optimizer
 
                 output_segmentations = self.model(X)
@@ -123,7 +126,7 @@ class Trainer(object):
                 loss = self.loss_segmentation(output_segmentations, Y_segmentations)
                 loss.backward()
                 # step optimizer
-                self.optimizer_scratch.step()
+                self.optimizer.step()
 
                 running_loss += loss.item()
                 if np.isnan(running_loss):
@@ -150,7 +153,7 @@ class Trainer(object):
                 print("Early stopping")
                 print(es.counter, es.patience)
                 print('Finished Training')
-                exit(0)
+                sys.exit(0)
 
         print('Finished Training')
 
@@ -195,6 +198,6 @@ class Trainer(object):
         create_dir(self.path_model)
         torch.save({'model_state_dict': self.model.state_dict(),
                     # 'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
-                    'optimizer_scratch_state_dict': self.optimizer_scratch.state_dict()
+                    'optimizer_state_dict': self.optimizer.state_dict()
                     }, self.path_model+'.p')
         print('Model saved at : {}'.format(self.path_model))

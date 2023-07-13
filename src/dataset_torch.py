@@ -68,42 +68,50 @@ class RasterDataset(Dataset):
 		if torch.is_tensor(idx):
 			idx = idx.tolist()
 
-
-		batch_coords = self.coords[idx]
-		batch_coords = np.squeeze(batch_coords.astype(np.uint16))
+		coord = self.coords[idx].astype(np.uint16)
+		# batch_coords = np.squeeze(batch_coords.astype(np.uint16))
 		
-		batch_img = np.zeros((batch_coords.shape[0], self.patch_size, self.patch_size, self.input_image.shape[-1]), dtype = np.float32)
+		# batch_img = np.zeros((self.patch_size, self.patch_size, self.input_image.shape[-1]), dtype = np.float32)
 
-		for i in range(batch_coords.shape[0]):
-			batch_img[i] = self.input_image[batch_coords[i,0] : batch_coords[i,0] + self.patch_size,
-					batch_coords[i,1] : batch_coords[i,1] + self.patch_size] 
-			batch_ref_int = self.reference[batch_coords[i,0] : batch_coords[i,0] + self.patch_size,
-					batch_coords[i,1] : batch_coords[i,1] + self.patch_size]
+		batch_img = self.input_image[coord[0] : coord[0] + self.patch_size,
+				coord[1] : coord[1] + self.patch_size] 
+		batch_ref_int = self.reference[coord[0] : coord[0] + self.patch_size,
+				coord[1] : coord[1] + self.patch_size]
 
-			if np.random.rand()<0.3:
-				batch_img[i] = np.rot90(batch_img[i], 1)
-				batch_ref_int = np.rot90(batch_ref_int, 1)
-				
-			if np.random.rand() >= 0.3 and np.random.rand() <= 0.5:
-				batch_img[i] = np.flip(batch_img[i], 0)
-				batch_ref_int = np.flip(batch_ref_int, 0)
+
+	
+		if np.random.rand()<0.3:
+			batch_img = np.rot90(batch_img, 1)
+			batch_ref_int = np.rot90(batch_ref_int, 1)
 			
-			if np.random.rand() > 0.5 and np.random.rand() <= 0.7:
-				batch_img[i] = np.flip(batch_img[i], 1)
-				batch_ref_int = np.flip(batch_ref_int, 1)
-				
-			if np.random.rand() > 0.7:
-				batch_img[i] = batch_img[i]
-				batch_ref_int = batch_ref_int
-			# batch_ref[i] = tf.keras.utils.to_categorical(batch_ref_int, self.class_n)
+		if np.random.rand() >= 0.3 and np.random.rand() <= 0.5:
+			batch_img = np.flip(batch_img, 0)
+			batch_ref_int = np.flip(batch_ref_int, 0)
+		
+		if np.random.rand() > 0.5 and np.random.rand() <= 0.7:
+			batch_img = np.flip(batch_img, 1)
+			batch_ref_int = np.flip(batch_ref_int, 1)
+			
+		if np.random.rand() > 0.7:
+			batch_img = batch_img
+			batch_ref_int = batch_ref_int
+		# batch_ref[i] = tf.keras.utils.to_categorical(batch_ref_int, self.class_n)
+		# print("1 batch_img.shape: ", batch_img.shape)
 
 		# I have shape (batch_size, patch_size, patch_size, 3). Change shape to (batch_size, 3, patch_size, patch_size)
-		batch_img = np.transpose(batch_img, (0, 3, 1, 2))
-		batch_ref_int = np.expand_dims(batch_ref_int, axis=1)
+		batch_img = np.transpose(batch_img, (2, 0, 1))
+		batch_ref_int = np.transpose(batch_ref_int, (2, 0, 1))
   
-		batch_img = self.transform_image(batch_img)
-		batch_ref_int = self.transform_seg(batch_ref_int)
-  
+		# print("2 batch_img.shape: ", batch_img.shape)
+		# print("3 batch_ref_int.shape: ", batch_ref_int.shape)
+		# transform batch_img to tensor
+		batch_img = torch.from_numpy(batch_img.copy()).float()
+		# transform batch_ref_int to tensor
+		batch_ref_int = torch.from_numpy(batch_ref_int.copy()).long()
+
+		# print("4 batch_img.dtype: ", batch_img.dtype)
+		# print("5 batch_ref_int.dtype: ", batch_ref_int.dtype)
+		# pdb.set_trace()
 		return batch_img, batch_ref_int
 
 

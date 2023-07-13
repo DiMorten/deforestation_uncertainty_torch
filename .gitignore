@@ -128,3 +128,4 @@ dmypy.json
 *.pkl
 *.json
 *.csv
+*.p
