@@ -98,9 +98,9 @@ class Trainer(object):
 
         self.path_model = os.path.join(self.config['General']['path_model'], 
             self.model.__class__.__name__ + 
-            '_' + str(self.config['General']['exp_id']))
+            '_' + str(self.config['General']['exp_id']) + '.pth')
 
-            
+        print("self.path_model", self.path_model)
     def train(self, train_dataloader, val_dataloader):
         epochs = self.config['General']['epochs']
 
@@ -153,7 +153,7 @@ class Trainer(object):
                 print("Early stopping")
                 print(es.counter, es.patience)
                 print('Finished Training')
-                sys.exit(0)
+                # sys.exit(0)
 
         print('Finished Training')
 
@@ -191,13 +191,18 @@ class Trainer(object):
                 val_loss += loss.item()
                 pbar.set_postfix({'validation_loss': val_loss/(i+1)})
 
+
         return val_loss/(i+1)
+
+
+    def _save_model(self):
+        path = os.path.join(self.path_model)
+        print('Model saved at : {}'.format(path))        
+        # recommended way from http://pytorch.org/docs/master/notes/serialization.html
+        torch.save(self.model.cpu().state_dict(), path)
 
     def save_model(self):
         
         create_dir(self.path_model)
-        torch.save({'model_state_dict': self.model.state_dict(),
-                    # 'optimizer_backbone_state_dict': self.optimizer_backbone.state_dict(),
-                    'optimizer_state_dict': self.optimizer.state_dict()
-                    }, self.path_model+'.p')
+        torch.save(self.model.state_dict(), self.path_model)
         print('Model saved at : {}'.format(self.path_model))

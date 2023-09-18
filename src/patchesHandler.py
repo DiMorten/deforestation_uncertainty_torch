@@ -4,6 +4,7 @@ import skimage
 import pdb
 # import sys
 import utils_v1
+import torch
 class PatchesHandler():
 
 	def create_idx_image(self, ref_mask):
@@ -96,13 +97,32 @@ class PatchesHandler():
 					new_model.layers[l].set_weights(model.layers[l].get_weights())
 				'''
 				patch = image1_pad[patch_size_x*j:patch_size_x*(j+1),patch_size_y*i:patch_size_y*(i+1)]
+				patch = np.expand_dims(patch, axis=0)	
+				print("1 patch.shape", patch.shape)    
+				patch = np.transpose(patch, (0,3,1,2))
+				patch = torch.from_numpy(patch)
+				print("2 patch.shape", patch.shape)
+				# patch = patch.to(self.device)
 				if classes_mode == False:
-					predicted = new_model.predict(np.expand_dims(patch, axis=0))[:,:,:,1].astype(np.float32)
+					# predicted = new_model.predict(np.expand_dims(patch, axis=0))[:,:,:,1].astype(np.float32)
+					predicted = new_model(patch)
+					predicted = predicted.detach().cpu().numpy()
+					predicted = np.transpose(predicted, (0,2,3,1))
+					predicted = predicted[:,:,:,1].astype(np.float32)
+
 				else:
-					predicted = new_model.predict(np.expand_dims(patch, axis=0)).astype(np.float32)
+					predicted = new_model(patch)
+					print("1 predicted.shape", predicted.shape)
+					predicted = torch.transpose(predicted, 1, -1)
+					print("2 predicted.shape", predicted.shape)
+
+					## predicted = new_model.predict(np.expand_dims(patch, axis=0)).astype(np.float32)
 					# predicted[...,0] += predicted[...,-1] # add past deforestation prob. to "not current deforestation"
 					# predicted[...,0] = 1 - predicted[...,1]
+					predicted = predicted.detach().cpu().numpy().astype(np.float32)
 					predicted = predicted[...,0:-1]
+					print("3 predicted.shape", predicted.shape)
+
 				img_reconstructed[patch_size_x*j:patch_size_x*(j+1),patch_size_y*i:patch_size_y*(i+1)] = predicted
 		del patch, predicted
 		return img_reconstructed

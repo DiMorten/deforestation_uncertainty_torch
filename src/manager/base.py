@@ -15,11 +15,12 @@ from enum import Enum
 import matplotlib.pyplot as plt
 from scipy import optimize  
 import glob
+import segmentation_models_pytorch as smp
 
 
 from src.dataset_torch import RasterDataset
 from torch.utils.data import DataLoader
-        
+import torch      
 class Manager():
     def __init__(self, config, dataset, patchesHandler, logger, grid_idx=0, training_times=1):
         self.classes_mode = config['classes_mode']
@@ -289,9 +290,22 @@ class Manager():
         num_patches_x = int(self.h/patch_size_rows)
         num_patches_y = int(self.w/patch_size_cols)
 
-        ic(self.path_models+ '/' + self.method +'_'+str(self.repetition_id)+'.h5')
-        model = utils_v1.load_model(self.path_models+ '/' + self.method +'_'+str(self.repetition_id)+'.h5', compile=False)
+        self.device = "cpu"
+        print("device: %s" % self.device)        
+        
+ 
         class_n = 3
+        
+        # path_model = self.path_models+ '/' + self.method +'_'+str(self.repetition_id)+'.pth'
+        # TO-DO: set dropout to true if MCD            
+        new_model = smp.DeepLabV3Plus('tu-xception41', encoder_weights='imagenet', 
+                        in_channels=self.config['Train']['input_bands'],
+                        classes=self.config['Dataset']['class_n'])
+        new_model.eval()
+        path_model = os.path.join(self.config['General']['path_model'], 
+            new_model.__class__.__name__ + 
+            '_' + str(self.config['General']['exp_id']) + '.pth')
+        ic(path_model)
         
         if self.config["loadInference"] == False:
             if self.config["save_probabilities"] == False:
@@ -302,48 +316,48 @@ class Manager():
 
                 # self.prob_rec = np.zeros((image1_pad.shape[0],image1_pad.shape[1], class_n, self.config["inference_times"]), dtype = np.float32)
             print("Dropout training mode: {}".format(self.config['dropout_training']))
-            new_model = utils_v1.build_resunet_dropout_spatial(input_shape=(patch_size_rows,patch_size_cols, self.c), 
-                nb_filters = self.nb_filters, n_classes = class_n, dropout_seed = None, training=self.config['dropout_training'])
-
-            for l in range(1, len(model.layers)):
-                new_model.layers[l].set_weights(model.layers[l].get_weights())
             
+
+
+            with open(path_model, "rb") as f:
+                new_model.load_state_dict(torch.load(f))
+
             self.patchesHandler.class_n = class_n
 
             metrics_all =[]
-            with tf.device('/cpu:0'):
-                for tm in range(0,self.config["inference_times"]):
 
-                    print('time: ', tm)
+            for tm in range(0,self.config["inference_times"]):
 
-                    
-                    # Recinstructing predicted map
-                    start_test = time.time()
-                    '''
-                    args_network = {'patch_size_rows': patch_size_rows,
-                        'patch_size_cols': patch_size_cols,
-                        'c': c,
-                        'nb_filters': nb_filters,
-                        'class_n': class_n,
-                        'dropout_seed': inference_times}
-                    '''
-                    prob_reconstructed = self.patchesHandler.infer(
-                            new_model, self.image1_pad, self.h, self.w, 
-                            num_patches_x, num_patches_y, patch_size_rows, 
-                            patch_size_cols, classes_mode = self.classes_mode)
-                            
-                    ts_time =  time.time() - start_test
+                print('time: ', tm)
 
-                    if self.config["save_probabilities"] == True:
-                        np.save(self.path_maps+'/'+'prob_'+str(tm)+'.npy',prob_reconstructed) 
-                    else:
-                        self.prob_rec[...,tm] = prob_reconstructed
-                    
-                    metrics_all.append(ts_time)
-                    del prob_reconstructed
-                metrics_ = np.asarray(metrics_all)
-                # Saving test time
-                np.save(self.path_exp+'/metrics_ts.npy', metrics_)
+                
+                # Recinstructing predicted map
+                start_test = time.time()
+                '''
+                args_network = {'patch_size_rows': patch_size_rows,
+                    'patch_size_cols': patch_size_cols,
+                    'c': c,
+                    'nb_filters': nb_filters,
+                    'class_n': class_n,
+                    'dropout_seed': inference_times}
+                '''
+                prob_reconstructed = self.patchesHandler.infer(
+                        new_model, self.image1_pad, self.h, self.w, 
+                        num_patches_x, num_patches_y, patch_size_rows, 
+                        patch_size_cols, classes_mode = self.classes_mode)
+                        
+                ts_time =  time.time() - start_test
+
+                if self.config["save_probabilities"] == True:
+                    np.save(self.path_maps+'/'+'prob_'+str(tm)+'.npy',prob_reconstructed) 
+                else:
+                    self.prob_rec[...,tm] = prob_reconstructed
+                
+                metrics_all.append(ts_time)
+                del prob_reconstructed
+            metrics_ = np.asarray(metrics_all)
+            # Saving test time
+            np.save(self.path_exp+'/metrics_ts.npy', metrics_)
         del self.image1_pad
     def loadPredictedProbabilities(self):
         if self.config["save_probabilities"] == True:

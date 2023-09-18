@@ -19,7 +19,7 @@ import cv2
 from enum import Enum
 import matplotlib.pyplot as plt
 from scipy import optimize  
-from src.trainer.base import Manager
+from src.manager.base import Manager
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri

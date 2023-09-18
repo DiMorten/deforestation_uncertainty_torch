@@ -183,7 +183,7 @@ class PathsMS(Paths):
             2019: ['Mosaico_SENTINEL_22473_Agosto2019_10m_8bits_EPG32722_crop.tif'],
             2020: ['Mosaico_SENTINEL_22473_Agosto2020_TerraClass_10m_reprojected_crop.tif']
         }
-                
+  
 class PathsMA(Paths): 
     def __init__(self): 
         self.reference_folder = 'D:/Jorge/datasets/deforestation/MA/'
@@ -211,7 +211,7 @@ class PathsMA(Paths):
         }
 
         self.im_filenames = {
-			2020: ['T23KQV_20200602T130251_B01.jp2', 
+            2020: ['T23KQV_20200602T130251_B01.jp2', 
             'T23KQV_20200602T130251_B02.jp2', 
             'T23KQV_20200602T130251_B03.jp2', 
             'T23KQV_20200602T130251_B04.jp2', 
@@ -224,7 +224,7 @@ class PathsMA(Paths):
             'T23KQV_20200602T130251_B10.jp2',
             'T23KQV_20200602T130251_B11.jp2',
             'T23KQV_20200602T130251_B12.jp2'],
-			2021: ['T23KQV_20210811T130249_B01.jp2', 
+            2021: ['T23KQV_20210811T130249_B01.jp2', 
             'T23KQV_20210811T130249_B02.jp2', 
             'T23KQV_20210811T130249_B03.jp2', 
             'T23KQV_20210811T130249_B04.jp2', 
@@ -237,4 +237,4 @@ class PathsMA(Paths):
             'T23KQV_20210811T130249_B10.jp2',
             'T23KQV_20210811T130249_B11.jp2',
             'T23KQV_20210811T130249_B12.jp2'] 
-		}
+        }
