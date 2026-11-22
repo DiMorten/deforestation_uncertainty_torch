@@ -12,7 +12,7 @@ import os
 class Dataset():
 
 	def loadInputImage(self): 
-		return np.load(self.paths.optical_im + 'optical_im.npy').astype('float32')[self.lims[0]:self.lims[1], self.lims[2]:self.lims[3]] 
+		return np.load(os.path.join(self.paths.optical_im,  'optical_im.npy')).astype('float32')[self.lims[0]:self.lims[1], self.lims[2]:self.lims[3]] 
 
 	def calculateTiles(self):
 		# Defining tiles for training, validation and test sets
