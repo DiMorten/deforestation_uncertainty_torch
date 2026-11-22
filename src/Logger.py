@@ -6,6 +6,12 @@ importlib.reload(_plt)
 import numpy as np
 from icecream import ic
 import pdb
+import cv2
+
+plt.rcParams['axes.titlesize'] = 16  # Default is 12
+
+
+
 class Logger():
     def createLogFolders(self, dataset):
         # figures_path = 'output/figures' + dataset.__class__.__name__ + '/'
@@ -219,12 +225,16 @@ class Logger():
             # manager.dataset.prodes_dates = ['21/07/2018', '24/07/2019', '26/07/2020']
             # manager.dataset.prodes_dates = ['02/08/2019', '05/08/2020', '22/07/2021']
             
-            titles = ['Snippet $\mathregular{T_{-1}}$'+' ({})'.format(manager.dataset.prodes_dates_to_print[0]), 
-                      'Snippet $\mathregular{T_{0}}$'+' ({})'.format(manager.dataset.prodes_dates_to_print[1]), 
-                      'Snippet $\mathregular{T_{1}}$'+' ({})'.format(manager.dataset.prodes_dates_to_print[2]), 
-                            'Prediction Probability at $\mathregular{T_{0}}$', 
-                            'Prediction at $\mathregular{T_{0}}$', 
-                            'Uncertainty at $\mathregular{T_{0}}$']
+            dates = manager.dataset.prodes_dates_to_print
+            titles = [
+                rf'Snippet $\mathregular{{T_{{-1}}}}$ ({dates[0]})',
+                rf'Snippet $\mathregular{{T_{{0}}}}$ ({dates[1]})',
+                rf'Snippet $\mathregular{{T_{{1}}}}$ ({dates[2]})',
+                r'Prediction Probability at $\mathregular{T_{0}}$',
+                r'Prediction at $\mathregular{T_{0}}$',
+                r'Uncertainty at $\mathregular{T_{0}}$'
+            ]
+
             cmaps = [plt.cm.gray, plt.cm.gray, plt.cm.gray,
                              'jet', plt.cm.gray, 'jet']
 
@@ -285,7 +295,7 @@ class Logger():
             _plt.plotCropSample5(manager.image_stack[...,previewBandsT0], manager.image_stack[...,previewBandsT1], manager.mean_prob, 
                     manager.error_mask_to_show_rgb[...,::-1], manager.uncertainty_to_show, 
                     lims = manager.dataset.previewLims1, 
-                    titles = ['Snippet $\mathregular{T_{-1}}$', 'Snippet $\mathregular{T_0}$', 'Predicted Probability', 'Predicted', 'Uncertainty'],
+                    titles = [r'Snippet $\mathregular{T_{-1}}$', r'Snippet $\mathregular{T_0}$', r'Predicted Probability', r'Predicted', r'Uncertainty'],
                     cmaps = [plt.cm.gray, plt.cm.gray, 'jet', plt.cm.gray, 'jet'],
                     maskBackground = [False, False, True, False, True],
                     invertMask = [False, False, False, False, False], uncertainty_vlims = uncertainty_vlims)
@@ -294,7 +304,7 @@ class Logger():
             _plt.plotCropSample5(manager.image_stack[...,previewBandsT0], manager.image_stack[...,previewBandsT1], manager.mean_prob, 
                     manager.error_mask_to_show_rgb[...,::-1], manager.uncertainty_to_show, 
                     lims = manager.dataset.previewLims2, 
-                    titles = ['Snippet $\mathregular{T_{-1}}$', 'Snippet $\mathregular{T_0}$', 'Predicted Probability', 'Predicted', 'Uncertainty'],
+                    titles = [r'Snippet $\mathregular{T_{-1}}$', r'Snippet $\mathregular{T_0}$', r'Predicted Probability', r'Predicted', r'Uncertainty'],
                     cmaps = [plt.cm.gray, plt.cm.gray, 'jet', plt.cm.gray, 'jet'],
                     maskBackground = [False, False, True, False, True],
                     invertMask = [False, False, False, False, False], uncertainty_vlims = uncertainty_vlims)
@@ -303,7 +313,7 @@ class Logger():
             _plt.plotCropSample5(manager.image_stack[...,previewBandsT0], manager.image_stack[...,previewBandsT1], manager.mean_prob, 
                     manager.error_mask_to_show_rgb[...,::-1], manager.uncertainty_to_show, 
                     lims = manager.dataset.previewLims2, 
-                    titles = ['Snippet $\mathregular{T_{-1}}$', 'Snippet $\mathregular{T_0}$', 'Predicted Probability', 'Predicted', 'Uncertainty'],
+                    titles = [r'Snippet $\mathregular{T_{-1}}$', r'Snippet $\mathregular{T_0}$', r'Predicted Probability', r'Predicted', r'Uncertainty'],
                     cmaps = [plt.cm.gray, plt.cm.gray, 'jet', plt.cm.gray, 'jet'],
                     maskBackground = [False, False, True, False, True],
                     invertMask = [False, False, False, False, False], uncertainty_vlims = uncertainty_vlims,
