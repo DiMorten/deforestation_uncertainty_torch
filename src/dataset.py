@@ -83,8 +83,8 @@ class Dataset():
 		return image_ref_   
 
 class PA(Dataset):
-	def __init__(self):
-		self.paths = PathsPA()
+	def __init__(self, data_root=None):
+		self.paths = PathsPA(data_root=data_root)
 
 		self.site = 'PA' 
 		 
@@ -130,8 +130,8 @@ class PA(Dataset):
 
 
 class MT(Dataset): 
-	def __init__(self): 
-		self.paths = PathsMT() 
+	def __init__(self, data_root=None): 
+		self.paths = PathsMT(data_root=data_root) 
 		# self.previewLims1 = np.array([2200, 3200, 6900, 7900])
 		# self.previewLims2 = np.array([500, 1500, 3500, 4500])
 		self.previewLims1 = np.array([11500, 12500, 9000, 10000])
@@ -185,8 +185,8 @@ class MT(Dataset):
 
 
 class MS(Dataset): 
-	def __init__(self): 
-		self.paths = PathsMS() 
+	def __init__(self, data_root=None): 
+		self.paths = PathsMS(data_root=data_root)
 		# self.previewLims1 = np.array([2200, 3200, 6900, 7900])
 		# self.previewLims2 = np.array([500, 1500, 3500, 4500])
 		self.previewLims1 = np.array([11500, 12500, 9000, 10000])
@@ -238,8 +238,8 @@ class MS(Dataset):
 		self.bands = 4
 
 class MA(Dataset):
-	def __init__(self):
-		self.paths = PathsMA()
+	def __init__(self, data_root=None):
+		self.paths = PathsMA(data_root=data_root)
 
 		self.site = 'MA' 
 		 
@@ -295,9 +295,9 @@ class PADistanceMap(PA):
 		return image_stack    
 
 class DeforestationTime():
-	def __init__(self, addPastDeforestationInput = True):
+	def __init__(self, addPastDeforestationInput = True, data_root=None):
 		self.addPastDeforestationInput = addPastDeforestationInput
-		super().__init__()
+		super().__init__(data_root=data_root)
 
 		self.previewBands = [13, 12, 11]
 
@@ -327,7 +327,8 @@ class DeforestationTime():
 
 class MultipleDates():
 	def __init__(self, config=None, dates = [2018, 2019], addPastDeforestationInput = True, borderBuffer = 0):
-		super().__init__(addPastDeforestationInput)
+		data_root = config.get('data_dir') if config else None
+		super().__init__(addPastDeforestationInput, data_root=data_root)
 		self.config = config
 		self.dates = dates
 
