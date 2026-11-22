@@ -110,6 +110,7 @@ def plotCropSample4(im1, im2, im3, im4, lims = None,
     axes[2].title.set_text(titles[2])
     axes[3].title.set_text(titles[3])  
 
+    plt.tight_layout()
 
 
 
