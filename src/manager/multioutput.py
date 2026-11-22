@@ -17,9 +17,10 @@ import src.uncertainty as uncertainty
 import pathlib
 import pdb
 
+from src.modelGenerator import generate_model
 
 import torch
-from numpy.core.numeric import Inf
+from numpy import inf
 import torch.nn as nn
 from tqdm import tqdm
 
@@ -32,20 +33,28 @@ class ManagerMultiOutput(Manager):
         
 
     def train(self):
-        trainer = Trainer(self.config)
-        t0 = time.time()
-        trainer.train(self.train_dataloader, self.val_dataloader)
-        print(time.time() - t0)
+        for tm in range(self.config['training_times']):
+            if self.config['training_times'] == 1:
+                trainer = Trainer(self.config)
+            else:
+                trainer = Trainer(self.config, str(tm))
+            t0 = time.time()
+            trainer.train(self.train_dataloader, self.val_dataloader)
+            print("Training time: {:.2f} s".format(time.time() - t0))
     def getMeanProb(self):
-        self.mean_prob = np.mean(self.prob_rec, axis = -1)
+        self.mean_prob = np.mean(self.prob_rec, axis = 0)
         if self.classes_mode == True:
             self.mean_prob = self.mean_prob[...,1]            
 
     def preprocessProbRec(self):
         if self.classes_mode == False:
-            self.prob_rec = np.transpose(self.prob_rec, (2, 0, 1))
+            print(f"preprocessProbRec=> self.prob_rec.shape: {self.prob_rec.shape}")
+            #self.prob_rec = np.transpose(self.prob_rec, (2, 0, 1))
             self.prob_rec = np.expand_dims(self.prob_rec, axis = -1)
+            print(f"preprocessProbRec=> self.prob_rec.shape: {self.prob_rec.shape}")
         else:
+            # this np.transpose is untested, but since the the other one needed to be removed, I think this one is also wrong. 
+            # The shape of prob_rec should be (inference_times, h, w)
             self.prob_rec = np.transpose(self.prob_rec, (3, 0, 1, 2))
 
     def setUncertainty(self):
@@ -104,7 +113,7 @@ class ManagerEnsemble(ManagerMultiOutput):
         super().__init__(config, dataset, patchesHandler, logger, grid_idx)
         self.default_log_name = 'output/log/log_ensemble.pkl'
 
-    def infer(self):
+    def infer(self, device="cpu"):
         self.h, self.w, self.c = self.image1_pad.shape
         self.c = self.channels
         patch_size_rows = self.h//self.n_rows
@@ -113,56 +122,96 @@ class ManagerEnsemble(ManagerMultiOutput):
         num_patches_y = int(self.w/patch_size_cols)
 
 
+        #self.device = torch.device(self.config['General']['device'] if torch.cuda.is_available() else "cpu")
+        self.device = device
+        
+        print("device: %s" % self.device)     
+
         class_n = 3
         
-        if self.config["loadInference"] == False:
-            if self.config["save_probabilities"] == False:
-                if self.classes_mode == False:
-                    self.prob_rec = np.zeros((self.image1_pad.shape[0],self.image1_pad.shape[1], self.config["inference_times"]), dtype = np.float32)
-                else:
-                    self.prob_rec = np.zeros((self.image1_pad.shape[0],self.image1_pad.shape[1], class_n - 1, self.config["inference_times"]), dtype = np.float32)
+        new_model = generate_model(self.config)
 
-            new_model = utils_v1.build_resunet_dropout_spatial(input_shape=(patch_size_rows,patch_size_cols, self.c), 
-                nb_filters = self.nb_filters, n_classes = class_n, dropout_seed = None, training = False)
+        new_model.eval()
+        
+        
+        if self.config["loadInference"] == False:
+            if self.classes_mode == False:
+                self.prob_rec = np.zeros((self.image1_pad.shape[0],self.image1_pad.shape[1], self.config["inference_times"]), dtype = np.float32)
+            else:
+                self.prob_rec = np.zeros((self.image1_pad.shape[0],self.image1_pad.shape[1], class_n - 1, self.config["inference_times"]), dtype = np.float32)
 
             self.patchesHandler.class_n = class_n
             # pathlib.Path(self.path_maps).mkdir(parents=True, exist_ok=True)
-            with tf.device('/cpu:0'):
-                for tm in range(0,self.config["inference_times"]):
-                    print('time: ', tm)
-                    
-                    # Recinstructing predicted map
-                    start_test = time.time()
+            metrics_all =[]
 
-                    path_exp = self.dataset.paths.experiment + 'exp' + str(self.exp) # exp_ids[tm]
-                    path_models = path_exp + '/models'
-                    # ic(path_models+ '/' + method +'_'+str(0)+'.h5')
-                    model = utils_v1.load_model(path_models+ '/' + self.method +'_'+str(tm)+'.h5', compile=False)
-                    for l in range(1, len(model.layers)): #WHY 1?
-                        new_model.layers[l].set_weights(model.layers[l].get_weights())
-                    
-                    '''
-                    args_network = {'patch_size_rows': patch_size_rows,
-                        'patch_size_cols': patch_size_cols,
-                        'c': c,
-                        'nb_filters': nb_filters,
-                        'class_n': class_n,
-                        'dropout_seed': inference_times}
-                    '''
-                    prob_reconstructed = self.patchesHandler.infer(
-                            new_model, self.image1_pad, self.h, self.w, 
-                            num_patches_x, num_patches_y, patch_size_rows, 
-                            patch_size_cols, classes_mode = self.classes_mode)
-                            
-                    ts_time =  time.time() - start_test
+            
+            for tm in range(0,self.config["inference_times"]):
+                print('time: ', tm)
+                
+                # Recinstructing predicted map
+                start_test = time.time()
 
-                    if self.config["save_probabilities"] == True:
+                path_exp = self.dataset.paths.experiment + 'exp' + str(self.exp) # exp_ids[tm]
+                path_models = path_exp + '/models'
+                
+                # ic(path_models+ '/' + method +'_'+str(0)+'.h5')
+                model_name = new_model.__class__.__name__
+                if self.config['General']['model_type'] == 'resunet':
+                    model_name = model_name.replace("Unet","ResUNet")
+                path_model = os.path.join(self.config['General']['path_model'], 
+                    model_name + 
+                    '_' + str(self.config['General']['exp_id']) + str(tm) + '.pth')
+                
+                ic(path_model)
+
+                with open(path_model, "rb") as f:
+                    new_model.load_state_dict(torch.load(f), strict = True)
+                    print(f"Model weights loaded from {path_model}")
+
+                """
+                model = utils_v1.load_model(path_models+ '/' + self.method +'_'+str(tm)+'.h5', compile=False)
+                for l in range(1, len(model.layers)): #WHY 1?
+                    new_model.layers[l].set_weights(model.layers[l].get_weights())
+                """
+                '''
+                args_network = {'patch_size_rows': patch_size_rows,
+                    'patch_size_cols': patch_size_cols,
+                    'c': c,
+                    'nb_filters': nb_filters,
+                    'class_n': class_n,
+                    'dropout_seed': inference_times}
+                '''
+                prob_reconstructed = self.patchesHandler.infer(
+                        new_model, self.image1_pad, self.h, self.w, 
+                        num_patches_x, num_patches_y, patch_size_rows, 
+                        patch_size_cols, classes_mode = self.classes_mode, device = self.device)
                         
-                        np.save(os.path.join(self.path_maps, 'prob_'+str(tm)+'.npy'),prob_reconstructed) 
-                    else:
-                        self.prob_rec[...,tm] = prob_reconstructed
+                ts_time =  time.time() - start_test
 
-                    del prob_reconstructed
+                if self.config["save_probabilities"] == True:     
+                    np.save(os.path.join(self.path_maps, model_name +'prob_'+str(tm)+'.npy'),prob_reconstructed)
+                    print(f"Saved inference results at {os.path.join(self.path_maps, model_name +'prob_'+str(tm)+'.npy')}")
+                else:
+                    print(f"config['save_probabilities'] is {self.config['save_probabilities']} so not saving the inference result")
+                    
+                self.prob_rec[...,tm] = prob_reconstructed
+
+                metrics_all.append(ts_time)
+                del prob_reconstructed
+            metrics_ = np.asarray(metrics_all)
+            # Saving test time
+            np.save(self.path_exp+'/metrics_ts.npy', metrics_)
+            
+        else: # load the inference result instead of redoing it again
+            if self.classes_mode == False:
+                self.prob_rec = np.zeros((self.image1_pad.shape[0],self.image1_pad.shape[1], self.config["inference_times"]), dtype = np.float32)
+            else:
+                self.prob_rec = np.zeros((self.image1_pad.shape[0],self.image1_pad.shape[1], class_n - 1, self.config["inference_times"]), dtype = np.float32)
+
+            for tm in range(0,self.config["inference_times"]):
+                self.prob_rec[...,tm] = np.load(os.path.join(self.path_maps, 'prob_'+str(tm)+'.npy'))
+
+        self.backup_prob_rec = self.prob_rec.copy()
         del self.image1_pad
 
     def run_predictor_repetition_single_entropy(self):
