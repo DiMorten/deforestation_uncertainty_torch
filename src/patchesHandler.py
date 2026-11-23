@@ -79,7 +79,7 @@ class PatchesHandler():
 
 	def infer(self, new_model, image1_pad,
 		h, w, num_patches_x, num_patches_y, 
-		patch_size_x, patch_size_y, classes_mode=False):
+		patch_size_x, patch_size_y, classes_mode=False, device="cpu"):
 		# patch_size_x, patch_size_y, a):
 		
 		if classes_mode == False:
@@ -102,7 +102,7 @@ class PatchesHandler():
 				patch = np.transpose(patch, (0,3,1,2))
 				patch = torch.from_numpy(patch)
 				print("2 patch.shape", patch.shape)
-				# patch = patch.to(self.device)
+				patch = patch.to(device)
 				if classes_mode == False:
 					# predicted = new_model.predict(np.expand_dims(patch, axis=0))[:,:,:,1].astype(np.float32)
 					predicted = new_model(patch)

@@ -130,3 +130,8 @@ dmypy.json
 *.csv
 *.p
 *.pth
+
+train_log.txt
+test.ipynb
+/src_backup
+*.whl

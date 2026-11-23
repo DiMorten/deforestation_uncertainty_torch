@@ -2,19 +2,14 @@
 
 ## Installation
 
-These instructions were tested in Windows 10
+These instructions were tested in Windows 11
 
-1. We provide the `environment.yml` file. In conda, install the environment running: `conda env create -f environment.yml`
-2. Activate the environment: `conda activate tf2`
-3. Install GDAL 3.4.3 for Python 3.9
-   - Go to https://www.lfd.uci.edu/~gohlke/pythonlibs/#gdal
-   - Download `GDAL-3.4.3-cp39-cp39-win_amd64.whl`
-   - Install running: `pip install GDAL-3.4.3-cp39-cp39-win_amd64.whl`
-4. Install rasterio 1.2.10 for Python 3.9
-    - Go to https://www.lfd.uci.edu/~gohlke/pythonlibs/#gdal
-    - Download `rasterio-1.2.10-cp39-cp39-win_amd64.whl`
-    - Install running: `pip install rasterio-1.2.10-cp39-cp39-win_amd64.whl`
-5. Run `pip3 install numpy==1.23.5`
+```bash
+conda env create -f environment_tf2_torch.yml
+conda activate tf2_torch
+pip install -r requirements_tf2_torch.txt
+python -m ipykernel install --user --name=tf2_torch --display-name="Python (tf2_torch)"
+```
 
 ## Dataset folder structure
 ```

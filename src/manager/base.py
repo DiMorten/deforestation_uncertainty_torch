@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from scipy import optimize  
 import glob
 import segmentation_models_pytorch as smp
+from src.modelGenerator import generate_model
 
 
 from src.dataset_torch import RasterDataset
@@ -281,7 +282,7 @@ class Manager():
     def defineRepetitionId(self, repetition_id):
         self.repetition_id = repetition_id
 
-    def infer(self):
+    def infer(self, device = "cpu"):
 
         self.h, self.w, self.c = self.image1_pad.shape
         self.c = self.channels
@@ -290,21 +291,25 @@ class Manager():
         num_patches_x = int(self.h/patch_size_rows)
         num_patches_y = int(self.w/patch_size_cols)
 
-        self.device = "cpu"
+        self.device = device
+        
         print("device: %s" % self.device)        
         
  
         class_n = 3
         
         # path_model = self.path_models+ '/' + self.method +'_'+str(self.repetition_id)+'.pth'
-        # TO-DO: set dropout to true if MCD            
-        new_model = smp.DeepLabV3Plus('tu-xception41', encoder_weights='imagenet', 
-                        in_channels=self.config['Train']['input_bands'],
-                        classes=self.config['Dataset']['class_n'])
+        # TO-DO: set dropout to true if MCD      
+        
+        new_model = generate_model(self.config)
+        
+        
         new_model.eval()
         path_model = os.path.join(self.config['General']['path_model'], 
             new_model.__class__.__name__ + 
             '_' + str(self.config['General']['exp_id']) + '.pth')
+        if self.config['General']['model_type'] == 'resunet':
+            path_model = path_model.replace("Unet","ResUNet")
         ic(path_model)
         
         if self.config["loadInference"] == False:
@@ -344,7 +349,7 @@ class Manager():
                 prob_reconstructed = self.patchesHandler.infer(
                         new_model, self.image1_pad, self.h, self.w, 
                         num_patches_x, num_patches_y, patch_size_rows, 
-                        patch_size_cols, classes_mode = self.classes_mode)
+                        patch_size_cols, classes_mode = self.classes_mode, device = self.device)
                         
                 ts_time =  time.time() - start_test
 
@@ -358,7 +363,9 @@ class Manager():
             metrics_ = np.asarray(metrics_all)
             # Saving test time
             np.save(self.path_exp+'/metrics_ts.npy', metrics_)
+        self.backup_prob_rec = self.prob_rec.copy()
         del self.image1_pad
+        
     def loadPredictedProbabilities(self):
         if self.config["save_probabilities"] == True:
             self.prob_rec = np.zeros((self.h, self.w, self.config["inference_times"]), dtype = np.float32)

@@ -7,13 +7,15 @@ import torch.nn as nn
 
 from tqdm import tqdm
 from os import replace
-from numpy.core.numeric import Inf
+#from numpy.core.numeric import Inf
+from numpy import inf
 
 from src.utils import create_dir
 
 import sys
 
 import segmentation_models_pytorch as smp
+from src.modelGenerator import generate_model
 
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -21,15 +23,21 @@ ssl._create_default_https_context = ssl._create_unverified_context
 import torch.nn.functional as F
 import pdb
 
+import icecream as ic
+
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from sklearn.metrics import f1_score
 
 
-def get_loss():
+def get_loss(loss_type="CrossEntropyLoss"):
 
-    weights = [0.1, 0.9, 0]            
-    class_weights = torch.FloatTensor(weights).cuda()
-    loss_segmentation = nn.CrossEntropyLoss(weight=class_weights)
+    if loss_type == "CrossEntropyLoss":
+        weights = [0.1, 0.9, 0]            
+        class_weights = torch.FloatTensor(weights).cuda()
+        loss_segmentation = nn.CrossEntropyLoss(weight=class_weights)
+    if loss_type == "FocalLoss":
+        loss_segmentation = smp.losses.FocalLoss(mode ="multiclass", gamma=3,ignore_index=[2])
     return loss_segmentation
 
 
@@ -59,7 +67,7 @@ class EarlyStopping():
             return False
 class Trainer(object):
         
-    def __init__(self, config):
+    def __init__(self, config, tm=""):
         super().__init__()
         self.config = config
 
@@ -68,16 +76,9 @@ class Trainer(object):
         resize = config['Dataset']['transforms']['resize']
 
 
-        if config['General']['model_type'] == 'unet':        
-            
-            self.model = smp.Unet('xception', encoder_weights='imagenet', in_channels=self.config['Train']['input_bands'],
-                encoder_depth=4, decoder_channels=[128, 64, 32, 16], classes=self.config['Dataset']['class_n'])
-        elif config['General']['model_type'] == 'deeplab': # use this one        
-            
-            self.model = smp.DeepLabV3Plus('tu-xception41', encoder_weights='imagenet', 
-                                        in_channels=self.config['Train']['input_bands'],
-                                        classes=self.config['Dataset']['class_n'])
+        self.model = generate_model(config)
 
+        #ic(self.model)
                 
         self.model.to(self.device)
 
@@ -92,19 +93,27 @@ class Trainer(object):
         # summary(self.model, (3,resize,resize))
         # exit(0)
 
-        self.loss_segmentation = get_loss()
+        loss_type = self.config.get("loss_type",-1) 
+        if loss_type == -1:
+            self.loss_segmentation = get_loss()
+        else:
+            self.loss_segmentation = get_loss(loss_type)
+            
         self.optimizer = get_optimizer(config, self.model)
         self.schedulers = get_scheduler(self.optimizer)
 
+        self.model_output_folder = self.config['General']['path_model']
         self.path_model = os.path.join(self.config['General']['path_model'], 
             self.model.__class__.__name__ + 
-            '_' + str(self.config['General']['exp_id']) + '.pth')
+            '_' + str(self.config['General']['exp_id']) + tm + '.pth')
+        if config['General']['model_type'] == 'resunet':
+            self.path_model = self.path_model.replace("Unet","ResUNet")
 
         print("self.path_model", self.path_model)
     def train(self, train_dataloader, val_dataloader):
         epochs = self.config['General']['epochs']
 
-        val_loss = Inf
+        val_loss = inf
         es = EarlyStopping(10)
         for epoch in range(epochs):  # loop over the dataset multiple times
             print("Epoch ", epoch+1)
@@ -154,6 +163,7 @@ class Trainer(object):
                 print(es.counter, es.patience)
                 print('Finished Training')
                 # sys.exit(0)
+                break
 
         print('Finished Training')
 
@@ -170,6 +180,10 @@ class Trainer(object):
         Y_segmentations_1 = None
         output_depths_1 = None
         output_segmentations_1 = None
+
+        all_preds = []
+        all_targets = []
+
         with torch.no_grad():
             pbar = tqdm(val_dataloader)
             pbar.set_description("Validation")
@@ -189,9 +203,19 @@ class Trainer(object):
                 # get loss
                 loss = self.loss_segmentation(output_segmentations, Y_segmentations)
                 val_loss += loss.item()
+
+                preds = torch.argmax(output_segmentations, dim=1)
+                
+                all_preds.extend(preds.cpu().numpy().ravel())
+                all_targets.extend(Y_segmentations.cpu().numpy().ravel())
+                
+                
                 pbar.set_postfix({'validation_loss': val_loss/(i+1)})
-
-
+        all_targets_array = np.array(all_targets, dtype=int)
+        all_preds_array = np.array(all_preds, dtype=int)
+        per_class_f1 = f1_score(all_targets_array, all_preds_array, average=None, zero_division=0)
+        f1_str = " | ".join([f"Class {i}: {score:.4f}" for i, score in enumerate(per_class_f1)])
+        print(f"Val F1 - {f1_str}")
         return val_loss/(i+1)
 
 
@@ -202,7 +226,6 @@ class Trainer(object):
         torch.save(self.model.cpu().state_dict(), path)
 
     def save_model(self):
-        
-        create_dir(self.path_model)
+        create_dir(self.model_output_folder)
         torch.save(self.model.state_dict(), self.path_model)
         print('Model saved at : {}'.format(self.path_model))
